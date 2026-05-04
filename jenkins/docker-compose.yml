@@ -1,0 +1,21 @@
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jenkins-controller
+    ports:
+      - "8080:8080"     # Jenkins UI
+      - "50000:50000"   # Agent communication
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker-in-Docker
+      - ../:/workspace  # Mount the monorepo so Jenkins can access it
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+      - CASC_JENKINS_CONFIG=/var/jenkins_home/casc_configs
+    restart: unless-stopped
+
+volumes:
+  jenkins_data:
+    driver: local

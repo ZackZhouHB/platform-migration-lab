@@ -1,0 +1,43 @@
+# Jenkins plugins for the migration lab
+# Core pipeline plugins
+workflow-aggregator:latest
+pipeline-stage-view:latest
+pipeline-utility-steps:latest
+
+# Git & SCM
+git:latest
+github:latest
+github-branch-source:latest
+
+# Configuration as Code
+configuration-as-code:latest
+
+# Docker support
+docker-workflow:latest
+docker-plugin:latest
+
+# Credentials
+credentials:latest
+credentials-binding:latest
+plain-credentials:latest
+
+# Build tools
+nodejs:latest
+
+# Workspace cleanup
+ws-cleanup:latest
+
+# Blue Ocean UI
+blueocean:latest
+
+# Job DSL (for programmatic job creation)
+job-dsl:latest
+
+# Shared libraries
+workflow-cps-global-lib:latest
+
+# Timestamper
+timestamper:latest
+
+# Warnings/analysis
+warnings-ng:latest

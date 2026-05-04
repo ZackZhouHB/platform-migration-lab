@@ -1,0 +1,25 @@
+# CODEOWNERS — Defines ownership for code review routing
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default: platform team owns everything
+* @ZackZhouHB
+
+# Service ownership
+/services/api-gateway/      @ZackZhouHB
+/services/payment-service/  @ZackZhouHB
+/services/user-service/     @ZackZhouHB
+/services/frontend/         @ZackZhouHB
+
+# Shared libraries need careful review
+/libs/                      @ZackZhouHB
+
+# CI/CD changes need platform team review
+/.github/                   @ZackZhouHB
+/Jenkinsfiles/              @ZackZhouHB
+/jenkins/                   @ZackZhouHB
+
+# Infrastructure
+/terraform/                 @ZackZhouHB
+
+# Scripts
+/scripts/                   @ZackZhouHB

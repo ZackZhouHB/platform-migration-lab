@@ -1,0 +1,51 @@
+jenkins:
+  systemMessage: |
+    Platform Migration Lab - Jenkins Controller
+    This Jenkins instance is part of a CI/CD migration lab.
+    We are migrating these pipelines to GitHub Actions.
+  
+  numExecutors: 2
+  mode: NORMAL
+  
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: admin
+          password: admin
+
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: "LAB_ENV"
+            value: "migration-lab"
+
+unclassified:
+  location:
+    url: http://localhost:8080/
+  
+  globalLibraries:
+    libraries:
+      - name: "shared-pipeline-lib"
+        defaultVersion: "main"
+        implicit: true
+        retriever:
+          legacySCM:
+            scm:
+              filesystem:
+                path: "/workspace/jenkins/shared-libraries"
+
+tool:
+  nodejs:
+    installations:
+      - name: "node-20"
+        properties:
+          - installSource:
+              installers:
+                - nodeJSInstaller:
+                    id: "20.11.1"
+                    npmPackagesRefreshHours: 72

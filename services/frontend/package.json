@@ -1,0 +1,11 @@
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "description": "Frontend React application",
+  "scripts": {
+    "start": "echo 'Starting frontend dev server...'",
+    "test": "node tests/app.test.js",
+    "lint": "echo 'Linting frontend...' && exit 0",
+    "build": "echo 'Building frontend...' && mkdir -p dist && echo '<html><body>App</body></html>' > dist/index.html"
+  }
+}
