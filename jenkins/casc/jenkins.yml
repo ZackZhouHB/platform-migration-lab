@@ -28,24 +28,6 @@ unclassified:
   location:
     url: http://localhost:8080/
   
-  globalLibraries:
-    libraries:
-      - name: "shared-pipeline-lib"
-        defaultVersion: "main"
-        implicit: true
-        retriever:
-          legacySCM:
-            scm:
-              filesystem:
-                path: "/workspace/jenkins/shared-libraries"
-
-tool:
-  nodejs:
-    installations:
-      - name: "node-20"
-        properties:
-          - installSource:
-              installers:
-                - nodeJSInstaller:
-                    id: "20.11.1"
-                    npmPackagesRefreshHours: 72
+  # Shared libraries will be configured manually via Jenkins UI
+  # or via job DSL after initial startup. The filesystem SCM
+  # retriever requires additional plugins not in the base install.

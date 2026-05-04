@@ -1,0 +1,67 @@
+# Reusable workflow for building and testing Node.js services
+# This is the GitHub Actions equivalent of Jenkins shared libraries
+name: Reusable Node.js Build
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        required: true
+        type: string
+        description: "Service name (e.g., api-gateway)"
+      working-directory:
+        required: true
+        type: string
+        description: "Path to service directory"
+      node-version:
+        required: false
+        type: string
+        default: "20"
+
+permissions:
+  contents: read
+
+jobs:
+  lint-test-build:
+    name: "${{ inputs.service }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: ${{ inputs.working-directory }}/node_modules
+          key: deps-${{ runner.os }}-${{ inputs.service }}-${{ hashFiles(format('{0}/package-lock.json', inputs.working-directory), format('{0}/package.json', inputs.working-directory)) }}
+          restore-keys: |
+            deps-${{ runner.os }}-${{ inputs.service }}-
+
+      - name: Install dependencies
+        working-directory: ${{ inputs.working-directory }}
+        run: npm install
+
+      - name: Lint
+        working-directory: ${{ inputs.working-directory }}
+        run: npm run lint
+
+      - name: Test
+        working-directory: ${{ inputs.working-directory }}
+        run: npm test
+
+      - name: Build
+        working-directory: ${{ inputs.working-directory }}
+        run: npm run build
+
+      - name: Upload build artifacts
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.service }}-build
+          path: ${{ inputs.working-directory }}/dist/
+          retention-days: 7

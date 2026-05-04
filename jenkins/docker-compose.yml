@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: jenkins-controller
     ports:
-      - "8080:8080"     # Jenkins UI
+      - "8081:8080"     # Jenkins UI (8081 on host → 8080 in container)
       - "50000:50000"   # Agent communication
     volumes:
       - jenkins_data:/var/jenkins_home

@@ -1,0 +1,167 @@
+# CI Orchestrator — Monorepo change detection + selective builds
+# This is the heart of the monorepo CI/CD strategy
+# Uses dorny/paths-filter (Strategy 2) for dynamic change detection
+name: CI Orchestrator
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for the same branch/PR
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ─── Stage 1: Detect what changed ───
+  detect-changes:
+    name: "🔍 Detect Changes"
+    runs-on: ubuntu-latest
+    outputs:
+      api-gateway: ${{ steps.filter.outputs.api-gateway }}
+      payment-service: ${{ steps.filter.outputs.payment-service }}
+      user-service: ${{ steps.filter.outputs.user-service }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      shared-libs: ${{ steps.filter.outputs.shared-libs }}
+      jenkins: ${{ steps.filter.outputs.jenkins }}
+      any-service: ${{ steps.check.outputs.any-service }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api-gateway:
+              - 'services/api-gateway/**'
+            payment-service:
+              - 'services/payment-service/**'
+            user-service:
+              - 'services/user-service/**'
+            frontend:
+              - 'services/frontend/**'
+            shared-libs:
+              - 'libs/**'
+            jenkins:
+              - 'Jenkinsfiles/**'
+              - 'jenkins/**'
+
+      - name: Check if any service changed
+        id: check
+        run: |
+          if [[ "${{ steps.filter.outputs.api-gateway }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.payment-service }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.user-service }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.frontend }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.shared-libs }}" == "true" ]]; then
+            echo "any-service=true" >> $GITHUB_OUTPUT
+          else
+            echo "any-service=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Summary
+        run: |
+          echo "### 🔍 Change Detection Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Changed |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| api-gateway | ${{ steps.filter.outputs.api-gateway }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| payment-service | ${{ steps.filter.outputs.payment-service }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| user-service | ${{ steps.filter.outputs.user-service }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| frontend | ${{ steps.filter.outputs.frontend }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| shared-libs | ${{ steps.filter.outputs.shared-libs }} |" >> $GITHUB_STEP_SUMMARY
+
+  # ─── Stage 2: Build affected services ───
+
+  build-api-gateway:
+    name: "🔨 API Gateway"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.api-gateway == 'true' || needs.detect-changes.outputs.shared-libs == 'true'
+    uses: ./.github/workflows/reusable-node-build.yml
+    with:
+      service: api-gateway
+      working-directory: services/api-gateway
+
+  build-payment-service:
+    name: "🔨 Payment Service"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.payment-service == 'true' || needs.detect-changes.outputs.shared-libs == 'true'
+    uses: ./.github/workflows/reusable-python-build.yml
+    with:
+      service: payment-service
+      working-directory: services/payment-service
+
+  build-user-service:
+    name: "🔨 User Service"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.user-service == 'true' || needs.detect-changes.outputs.shared-libs == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Lint
+        working-directory: services/user-service
+        run: go vet ./...
+
+      - name: Test
+        working-directory: services/user-service
+        run: go test ./... -v
+
+      - name: Build
+        working-directory: services/user-service
+        run: |
+          CGO_ENABLED=0 go build -o bin/user-service ./src/
+          echo "Binary built successfully"
+
+  build-frontend:
+    name: "🔨 Frontend"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.shared-libs == 'true'
+    uses: ./.github/workflows/reusable-node-build.yml
+    with:
+      service: frontend
+      working-directory: services/frontend
+
+  build-shared-libs:
+    name: "🔨 Shared Libs"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.shared-libs == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Test common-utils
+        run: node libs/common-utils/tests/index.test.js
+
+  # ─── Stage 3: Summary ───
+  ci-summary:
+    name: "📊 CI Summary"
+    needs: [detect-changes, build-api-gateway, build-payment-service, build-user-service, build-frontend, build-shared-libs]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: CI Result Summary
+        run: |
+          echo "### 📊 CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| API Gateway | ${{ needs.build-api-gateway.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Payment Service | ${{ needs.build-payment-service.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| User Service | ${{ needs.build-user-service.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | ${{ needs.build-frontend.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Shared Libs | ${{ needs.build-shared-libs.result }} |" >> $GITHUB_STEP_SUMMARY

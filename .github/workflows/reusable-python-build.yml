@@ -1,0 +1,49 @@
+# Reusable workflow for building and testing Python services
+name: Reusable Python Build
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        required: true
+        type: string
+      working-directory:
+        required: true
+        type: string
+      python-version:
+        required: false
+        type: string
+        default: "3.12"
+
+permissions:
+  contents: read
+
+jobs:
+  lint-test-build:
+    name: "${{ inputs.service }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Lint
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          echo "Linting ${{ inputs.service }}..."
+          python3 -m py_compile src/app.py
+
+      - name: Test
+        working-directory: ${{ inputs.working-directory }}
+        run: python3 tests/test_app.py
+
+      - name: Build Docker image
+        if: github.ref == 'refs/heads/main'
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          echo "Building Docker image for ${{ inputs.service }}..."
+          docker build -t ${{ inputs.service }}:${{ github.sha }} .

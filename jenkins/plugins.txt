@@ -21,14 +21,8 @@ credentials:latest
 credentials-binding:latest
 plain-credentials:latest
 
-# Build tools
-nodejs:latest
-
 # Workspace cleanup
 ws-cleanup:latest
-
-# Blue Ocean UI
-blueocean:latest
 
 # Job DSL (for programmatic job creation)
 job-dsl:latest
@@ -38,6 +32,3 @@ workflow-cps-global-lib:latest
 
 # Timestamper
 timestamper:latest
-
-# Warnings/analysis
-warnings-ng:latest
