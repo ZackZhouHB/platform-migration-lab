@@ -1,6 +1,6 @@
 # Session Handoff — Platform Migration Lab
 
-> Last updated: 2026-05-05 01:02 AEST
+> Last updated: 2026-05-05 15:57 AEST
 
 ## Context
 
@@ -21,14 +21,26 @@ Hongbo (ZackZhouHB) is preparing for a **Platform Engineer** interview focused o
 - **Git remote**: HTTPS (SSH key belongs to TinaQi87, so we used `gh auth setup-git` for HTTPS push)
 - **`workflow` scope**: Added to gh token via `gh auth refresh -s workflow`
 
-### Local Jenkins
-- **Running at**: http://localhost:8081 (port 8080 was taken by another container)
+### Jenkins (Remote Server)
+- **Running at**: http://192.168.50.61:8080 (moved from local Mac to remote server)
+- **Remote server**: root@192.168.50.61 (Ubuntu 24.04, i7-12700KF, 32GB RAM, 831GB disk)
+- **Lab files on remote**: `/opt/platform-migration-lab/`
 - **Login**: admin / admin
-- **Start**: `cd /Users/zz/zz/Documents/platform-migration-lab/jenkins && docker compose up -d`
-- **Stop**: `cd /Users/zz/zz/Documents/platform-migration-lab/jenkins && docker compose down`
+- **Start**: `ssh root@192.168.50.61 'cd /opt/platform-migration-lab/jenkins && docker compose up -d'`
+- **Stop**: `ssh root@192.168.50.61 'cd /opt/platform-migration-lab/jenkins && docker compose down'`
 - **JCasC**: Applied (system message, admin user, 2 executors)
 - **Plugins**: Pipeline, Git, Docker, Credentials, Job DSL, CasC, Timestamper
 - **Note**: Blue Ocean and nodejs plugins removed (compatibility issues). Filesystem SCM for shared libs removed from JCasC — shared libs need manual config or Job DSL.
+- **Note**: Removed `credsStore: desktop.exe` from remote Docker config to fix build issue.
+
+### Architecture Split
+| Workload | Where | Why |
+|----------|-------|-----|
+| Code editing & git | Mac (local) | Keep Mac light and clean |
+| GitHub Actions CI | GitHub (cloud) | Free, unlimited minutes (public repo) |
+| Jenkins server | Remote server (192.168.50.61) | Heavy workload offloaded |
+| Docker builds | Remote server | Heavy workload offloaded |
+| Lightweight tests | Mac (local) | Quick feedback (node/python/go) |
 
 ### Monorepo Structure (4 services)
 | Service | Language | Has Tests | Has Dockerfile | Has Jenkinsfile |
@@ -78,11 +90,19 @@ Located in `jenkins/shared-libraries/vars/`:
 
 ## System Notes
 
-- **Machine**: Apple M5, 10 cores, 16GB RAM (Docker now set to 8GB)
+### Mac (local — coding only)
+- **Machine**: Apple M5, 10 cores, 16GB RAM (Docker set to 8GB)
 - **Disk**: 275GB free
-- **Docker**: 8 containers running (Jenkins + 7 others from other projects)
+- **Docker**: No Jenkins running locally anymore — offloaded to remote
 - **Reclaimable Docker space**: ~14.5GB build cache (`docker builder prune`)
-- **Port conflicts**: 8080 is used by another Docker container, Jenkins on 8081
+
+### Remote Server (192.168.50.61 — Docker workloads)
+- **Machine**: Intel i7-12700KF, 20 threads, 32GB RAM
+- **Disk**: 831GB free
+- **OS**: Ubuntu 24.04 LTS
+- **Docker**: 28.5.1, Jenkins + 8 other containers running
+- **SSH**: `ssh root@192.168.50.61` (key-based, no password)
+- **Lab path**: `/opt/platform-migration-lab/`
 
 ---
 
@@ -126,15 +146,18 @@ Located in `jenkins/shared-libraries/vars/`:
 # 1. Navigate to the lab
 cd /Users/zz/zz/Documents/platform-migration-lab
 
-# 2. Start Jenkins (if not running)
-cd jenkins && docker compose up -d && cd ..
+# 2. Start Jenkins on remote (if not running)
+ssh root@192.168.50.61 'cd /opt/platform-migration-lab/jenkins && docker compose up -d'
 
 # 3. Verify Jenkins
-curl -s -u admin:admin http://localhost:8081/api/json | jq '.mode'
+curl -s -u admin:admin http://192.168.50.61:8080/api/json | jq '.mode'
 
 # 4. Verify GitHub Actions
 gh run list --repo ZackZhouHB/platform-migration-lab --limit 3
 
-# 5. Tell Copilot to continue
+# 5. Sync lab files to remote (after local changes to jenkins/ or Jenkinsfiles/)
+rsync -avz --exclude '.git' --exclude 'node_modules' /Users/zz/zz/Documents/platform-migration-lab/ root@192.168.50.61:/opt/platform-migration-lab/
+
+# 6. Tell Copilot to continue
 # "Continue with the platform-migration-lab. Pick up from the session handoff."
 ```
